@@ -5,6 +5,7 @@
 	"main": "server.js",
 	"author": "Wander Paniagua",
 	"scripts": {
+		"dev": "nodemon server.js",
 		"start": "node server.js"
 	},
 	"dependencies": {
@@ -22,5 +23,8 @@
 	"keywords": [
 		"node",
 		"express"
-	]
+	],
+	"devDependencies": {
+		"nodemon": "^2.0.12"
+	}
 }
