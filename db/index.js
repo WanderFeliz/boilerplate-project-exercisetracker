@@ -50,13 +50,6 @@ const exerciseModel = mongoose.model('exercise', exerciseSchema);
 
 
 
-// const Models = {
-//   userModel: {
-//     model:userModel,
-
-//   }
-// }
-
 // Exporting models
 exports.userModel = userModel;
 exports.exerciseModel = exerciseModel;

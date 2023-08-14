@@ -4,38 +4,22 @@ const router = Router()
 const { userModel, exerciseModel, createAndSave, findItems } = require('../db');
 
 
+const clearQuery = (query) => {
+    let newQuery = {}
+    for (const key in query) {
+        const newKey = key.replace(/\[/g, '').replace(/\]/g, '')
+        newQuery[newKey] = query[key]
+    }
+    return newQuery
+}
+
 router.get('/api/users/:_id/logs', async (req, res) => {
-    const _userId = req.params?._id
+    const { _id: _userId } = req.params
     let user, exerciseError;
     let info = {};
 
-    let urlVals = req.url.split('?')?.[1]?.replace(/\[/g,'')?.replace(/\]/g,'');
-    let urlParams = {};
-    
-    urlVals.split('&')?.forEach(element => {
-        const [key, val] = element?.split('=')
-        urlParams[key] = val
-    });
-
-    let {from, to, limit} = urlParams
-
-    
-
-    console.log(urlParams)
-    
-
-    // Getting info from url params
-
-    // Using query builder
-    // Person.
-    //     find({ occupation: /host/ }).
-    //     where('name.last').equals('Ghost').
-    //     where('age').gt(17).lt(66).
-    //     where('likes').in(['vaporizing', 'talking']).
-    //     limit(10).
-    //     sort('-occupation').
-    //     select('name occupation').
-    //     exec(callback);
+    const urlQuery = clearQuery(req.query);
+    let { from, to, limit } = urlQuery;
     if (!_userId.trim()) {
         res.status(304)
         console.log("Error debe colocar un usuario");
@@ -65,24 +49,35 @@ router.get('/api/users/:_id/logs', async (req, res) => {
             query = query.limit(limit)
         }
         query = query.select('description duration date')
-        
-        console.log(query._conditions, query._fields);
+
         await query.exec((err, data) => {
-                if (err) {
-                    console.log(err);
-                } else {
-                    info = { _id: user._id, username: user.username, count: data.length, log: data };
-                    res.json(info)
-                }
-            });
-        
+            if (err) {
+                console.log(err);
+            } else {
+                const results = data.map(exercise => {
+
+                    let date = new Date(exercise.date);
+
+                    return {
+                        description: exercise.description,
+                        duration: exercise.duration,
+                        date: date.toDateString(),
+                    }
+                });
+
+
+                info = {
+                    _id: user._id,
+                    username: user.username,
+                    count: results.length,
+                    log: results
+                };
+                res.status(200).json(info)
+            }
+        });
+
     }
 
-    
-
-    
-
-    // res.send('Test')
 })
 
 router.get('/api/users', async (req, res) => {
@@ -90,7 +85,7 @@ router.get('/api/users', async (req, res) => {
     const data = results.map(user => (
         { username: user.username, _id: user._id }
     ))
-    res.json(data)
+    res.status(200).json(data)
 })
 
 router.post('/api/users', async (req, res) => {
@@ -107,7 +102,7 @@ router.post('/api/users', async (req, res) => {
             }
         });
     }
-    res.json(user);
+    res.status(200).json(user);
 })
 
 router.post('/api/users/:_id/exercises', async (req, res) => {
@@ -115,8 +110,8 @@ router.post('/api/users/:_id/exercises', async (req, res) => {
     let { description, duration, date } = req.body
     let user, exerciseError;
     if (!_userId.trim()) {
-        res.status(304)
         console.log("Error debe colocar un usuario");
+        res.status(304).json({ error: "Error debe colocar un usuario" })
     } else {
         await userModel.findById(_userId, (err, data) => {
             if (err) {
@@ -159,11 +154,11 @@ router.post('/api/users/:_id/exercises', async (req, res) => {
                     info = { _id: user._id, username: user.username, date: data.date?.toDateString(), duration: data.duration, description: data.description };
                 }
             }).catch((err) => {
-                res.status(304)
                 console.log("Ha ocurrido un error", err)
+                res.status(304).json({ msg: "Ha ocurrido un error", err })
             })
         }
-        res.json(info)
+        res.status(200).json(info);
     }
 
 
