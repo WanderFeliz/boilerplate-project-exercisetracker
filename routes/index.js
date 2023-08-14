@@ -140,8 +140,8 @@ router.post('/api/users/:_id/exercises', async (req, res) => {
         res.status(500).send(exerciseError);
     } else {
         let info = {};
-        if (description.trim() && duration.trim() && _userId.trim()) {
-            if (!date.trim()) {
+        if (description?.trim() && duration?.trim() && _userId?.trim()) {
+            if (!date?.trim()) {
                 date = Date.now();
             } else {
                 try {
