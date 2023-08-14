@@ -7,75 +7,85 @@ const { userModel, exerciseModel, createAndSave, findItems } = require('../db');
 const clearQuery = (query) => {
     let newQuery = {}
     for (const key in query) {
-        const newKey = key.replace(/\[/g, '').replace(/\]/g, '')
-        newQuery[newKey] = query[key]
+        const newKey = key.replace(/\[/g, '').replace(/\]/g, '');
+        let newValue = query[key]
+
+        if (query[key]) {
+            newValue = query[key].replace(/\[/g, '').replace(/\]/g, '');
+        }
+
+        if (newKey === 'limit') {
+            newValue = Number(newValue)
+        }
+        newQuery[newKey] = newValue;
     }
     return newQuery
 }
 
 router.get('/api/users/:_id/logs', async (req, res) => {
     const { _id: _userId } = req.params
-    let user, exerciseError;
+    let exerciseError;
     let info = {};
 
     const urlQuery = clearQuery(req.query);
     let { from, to, limit } = urlQuery;
-    if (!_userId.trim()) {
-        res.status(304)
-        console.log("Error debe colocar un usuario");
-    } else {
-        await userModel.findById(_userId, (err, data) => {
+    if (_userId) {
+        await userModel.findById(_userId, (err, user) => {
             if (err) {
                 exerciseError = err.message;
             } else {
-                if (data == null) {
+                if (user == null) {
                     exerciseError = "Error _Id no existente";
                 }
-                user = data;
+
+                if (!user) {
+                    res.status(500).send(exerciseError);
+                } else {
+                    // Using query builder
+                    let query = exerciseModel.find({ _userId: _userId })
+                    if (from && to) {
+                        query = query.where('date').gte(from).lte(to)
+                    }
+                    if (limit) {
+                        query = query.limit(limit)
+                    }
+                    query = query.select('description duration date')
+
+                    query.exec((err, data) => {
+                        if (err) {
+                            console.log(err);
+                        } else {
+                            const results = data.map(exercise => {
+
+                                let date = new Date(exercise.date);
+
+                                return {
+                                    description: exercise.description,
+                                    duration: exercise.duration,
+                                    date: date.toDateString(),
+                                }
+                            });
+
+
+                            info = {
+                                _id: user._id,
+                                username: user.username,
+                                count: results.length,
+                                log: results
+                            };
+                            res.status(200).json(info)
+                        }
+                    });
+
+                }
             }
         }).catch((err) => {
             exerciseError = err.message;
         });
-    }
-    if (!user) {
-        res.status(500).send(exerciseError);
+
     } else {
-        // Using query builder
-        let query = exerciseModel.find({ _userId: _userId })
-        if (from && to) {
-            query = query.where('date').gte(from).lte(to)
-        }
-        if (limit) {
-            query = query.limit(limit)
-        }
-        query = query.select('description duration date')
-
-        await query.exec((err, data) => {
-            if (err) {
-                console.log(err);
-            } else {
-                const results = data.map(exercise => {
-
-                    let date = new Date(exercise.date);
-
-                    return {
-                        description: exercise.description,
-                        duration: exercise.duration,
-                        date: date.toDateString(),
-                    }
-                });
-
-
-                info = {
-                    _id: user._id,
-                    username: user.username,
-                    count: results.length,
-                    log: results
-                };
-                res.status(200).json(info)
-            }
-        });
-
+        console.log("Error debe colocar un usuario");
+        res.status(304).json({ error: "Error debe colocar un usuario" });
     }
 
 })
